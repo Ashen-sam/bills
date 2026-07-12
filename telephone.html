@@ -50,39 +50,56 @@
     <p class="card-sub">Record a bill you've just paid.</p>
 
     <form id="billForm">
-      <div class="field">
-        <label for="monthYear">
-          <i data-lucide="calendar-days"></i>
-          Billing Month
+
+      <div class="sms-box">
+        <label>
+          <i data-lucide="message-square-text"></i>
+          Paste Bill SMS (optional)
         </label>
-        <input type="month" id="monthYear" required>
+        <textarea id="smsText" placeholder="Paste the payment confirmation SMS here…"></textarea>
+        <p class="sms-hint">iPhone can't share SMS with apps automatically — open Messages, long-press the SMS, tap Copy, then paste it here. We'll try to pull the amount &amp; date for you.</p>
+        <button type="button" class="btn btn-secondary btn-sm" id="parseSmsBtn">
+          <i data-lucide="wand-2"></i>
+          Auto-fill from SMS
+        </button>
+        <div id="parseResult" class="parse-result"></div>
       </div>
 
-      <div class="field">
-        <label for="amountPaid">
-          <i data-lucide="banknote"></i>
-          Amount Paid (LKR)
-        </label>
-        <input type="number" id="amountPaid" placeholder="e.g. 5500" min="0" step="0.01" required>
+      <div class="form-grid">
+        <div class="field">
+          <label for="monthYear">
+            <i data-lucide="calendar-days"></i>
+            Billing Month
+          </label>
+          <input type="month" id="monthYear" required>
+        </div>
+
+        <div class="field">
+          <label for="amountPaid">
+            <i data-lucide="banknote"></i>
+            Amount Paid (LKR)
+          </label>
+          <input type="number" id="amountPaid" placeholder="e.g. 5500" min="0" step="0.01" required>
+        </div>
+
+        <div class="field">
+          <label for="datePaid">
+            <i data-lucide="calendar-check-2"></i>
+            Date Paid
+          </label>
+          <input type="date" id="datePaid" required>
+        </div>
+
+        <div class="field">
+          <label for="notes">
+            <i data-lucide="file-text"></i>
+            Notes (optional)
+          </label>
+          <input type="text" id="notes" placeholder="e.g. Account no. / reference">
+        </div>
       </div>
 
-      <div class="field">
-        <label for="datePaid">
-          <i data-lucide="calendar-check-2"></i>
-          Date Paid
-        </label>
-        <input type="date" id="datePaid" required>
-      </div>
-
-      <div class="field">
-        <label for="notes">
-          <i data-lucide="file-text"></i>
-          Notes (optional)
-        </label>
-        <input type="text" id="notes" placeholder="e.g. Account no. / reference">
-      </div>
-
-      <button type="submit" class="btn btn-primary" id="saveBtn">
+      <button type="submit" class="btn btn-primary" id="saveBtn" style="margin-top:6px;">
         <i data-lucide="save"></i>
         Save Paid Bill
       </button>
@@ -193,6 +210,7 @@ function updateStats(bills){
 
 async function init(){
   renderIcons();
+  wireSmsAutofill();
   try{
     const store = await loadStore();
     statusPill.textContent = "Online";
@@ -231,6 +249,7 @@ document.getElementById("billForm").addEventListener("submit", async (e) => {
     e.target.reset();
     document.getElementById("datePaid").valueAsDate = new Date();
     document.getElementById("monthYear").value = new Date().toISOString().slice(0,7);
+    document.getElementById("parseResult").textContent = "";
   }catch(err){
     alert("Could not save bill: " + err.message);
   }finally{

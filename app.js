@@ -101,3 +101,89 @@ function renderIcons(){
     window.lucide.createIcons();
   }
 }
+
+/* ============================================
+   SMS "auto-fill" parsing
+   ----------------------------------------------
+   iOS does not let any website read your SMS
+   automatically — there is no such permission a
+   browser/PWA can request. The realistic workaround:
+   the user copies the payment-confirmation SMS text
+   (Messages app -> long-press -> Copy) and pastes it
+   here. We then pattern-match the amount and date out
+   of that text so they don't have to type it manually.
+   ============================================ */
+function parseBillSms(text){
+  if (!text || !text.trim()) return null;
+
+  // Strip thousands separators so "5,500.00" -> "5500.00"
+  const clean = text.replace(/,/g, "");
+
+  // ---- Amount ----
+  // Matches things like: "Rs. 5500.00", "LKR 5500", "Amount: 5500.00", "5500 LKR"
+  let amount = null;
+  let m = clean.match(/(?:rs\.?|lkr|amount(?:\s*paid)?)\s*[:\-]?\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
+  if (!m) m = clean.match(/([0-9]+(?:\.[0-9]{1,2})?)\s*(?:rs\.?|lkr)/i);
+  if (m) amount = parseFloat(m[1]);
+
+  // ---- Date ----
+  // Try a few common SMS date formats, in order of specificity
+  let date = null;
+  const months = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+
+  // 2026-07-12 or 2026/07/12
+  if ((m = clean.match(/(20\d{2})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/))){
+    date = `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+  }
+  // 12-07-2026 or 12/07/2026
+  else if ((m = clean.match(/\b(\d{1,2})[\/\-](\d{1,2})[\/\-](20\d{2})\b/))){
+    date = `${m[3]}-${String(m[2]).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+  }
+  // 12 Jul 2026 / 12 July 2026
+  else if ((m = clean.match(/\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(20\d{2})\b/))){
+    const mm = months[m[2].toLowerCase().slice(0,3)];
+    if (mm) date = `${m[3]}-${String(mm).padStart(2,"0")}-${String(m[1]).padStart(2,"0")}`;
+  }
+  // Jul 12, 2026 / July 12 2026
+  else if ((m = clean.match(/\b([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(20\d{2})\b/))){
+    const mm = months[m[1].toLowerCase().slice(0,3)];
+    if (mm) date = `${m[3]}-${String(mm).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`;
+  }
+
+  return { amount, date };
+}
+
+/* Wires up a "Paste SMS -> auto-fill" box for a given form.
+   Expects elements with ids: smsText, parseSmsBtn, parseResult,
+   amountPaid, datePaid, monthYear (monthYear is optional). */
+function wireSmsAutofill(){
+  const btn = document.getElementById("parseSmsBtn");
+  if (!btn) return;
+
+  btn.addEventListener("click", () => {
+    const text = document.getElementById("smsText").value;
+    const result = parseBillSms(text);
+    const resultEl = document.getElementById("parseResult");
+
+    if (!result || (!result.amount && !result.date)){
+      resultEl.textContent = "Couldn't find an amount or date in that text — please fill the fields in manually.";
+      resultEl.className = "parse-result err";
+      return;
+    }
+
+    if (result.amount != null){
+      document.getElementById("amountPaid").value = result.amount;
+    }
+    if (result.date){
+      document.getElementById("datePaid").value = result.date;
+      const monthField = document.getElementById("monthYear");
+      if (monthField) monthField.value = result.date.slice(0, 7);
+    }
+
+    const parts = [];
+    if (result.amount != null) parts.push(formatLKR(result.amount));
+    if (result.date) parts.push(formatDate(result.date));
+    resultEl.textContent = "Filled in: " + parts.join(" · ");
+    resultEl.className = "parse-result";
+  });
+}
