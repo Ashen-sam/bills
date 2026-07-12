@@ -1,26 +1,43 @@
 /* ============================================
    Home Bills Tracker — shared styles
-   Palette: greens + white, card-based mobile-first layout
+   Palette: blue/indigo + white, soft card-based
+   mobile-first layout (inspired by the reference
+   health-app screenshot)
    ============================================ */
 
 :root{
-  --green:        #16a34a;
-  --green-dark:    #0f7a37;
-  --green-mid:     #22c55e;
-  --green-light:   #dcfce7;
-  --green-lighter: #f0fdf4;
+  /* Core "green" variable names are kept as-is so every
+     page/script that references var(--green-dark) etc.
+     keeps working — only the values changed to blue/indigo. */
+  --green:        #4f6ef7;   /* primary indigo-blue */
+  --green-dark:    #3346c8;   /* deep indigo for headings/emphasis */
+  --green-mid:     #6c86ff;   /* mid blue for gradients */
+  --green-light:   #e2e7ff;   /* soft lavender-blue for tags/badges */
+  --green-lighter: #f2f4ff;   /* very light blue-white for tinted icon bg */
   --white:         #ffffff;
-  --ink:           #1f2937;
-  --ink-soft:      #4b5563;
-  --ink-faint:     #9ca3af;
-  --border:        #e5e7eb;
-  --danger:        #dc2626;
+  --ink:           #1e2140;
+  --ink-soft:      #6b7094;
+  --ink-faint:     #a3a7c7;
+  --border:        #e6e8fb;
+  --danger:        #ef4444;
   --danger-light:  #fef2f2;
+
+  /* Extra accent colors, used the way the reference screenshot
+     uses a different pastel color per pill/category tile */
+  --accent-red:     #ff6b6b;
+  --accent-red-bg:  #ffe7e7;
+  --accent-purple:  #8b6bff;
+  --accent-purple-bg:#efe9ff;
+  --accent-amber:   #ffb648;
+  --accent-amber-bg:#fff3df;
+  --accent-teal:    #2fc6b8;
+  --accent-teal-bg: #e2faf6;
+
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-sm: 10px;
-  --shadow: 0 4px 18px rgba(16, 90, 46, 0.08);
-  --shadow-sm: 0 2px 8px rgba(16, 90, 46, 0.06);
+  --shadow: 0 8px 22px rgba(51, 70, 200, 0.10);
+  --shadow-sm: 0 3px 10px rgba(51, 70, 200, 0.08);
 }
 
 *{ box-sizing:border-box; }
@@ -37,7 +54,7 @@ html{
 body{
   margin:0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: linear-gradient(180deg, #eafaf0 0%, #f4fbf6 40%, #eef6f0 100%);
+  background: linear-gradient(180deg, #eef1ff 0%, #f6f7ff 40%, #f1f3fb 100%);
   color: var(--ink);
   min-height:100vh;
   min-height:100dvh;
@@ -95,7 +112,7 @@ body{
   border-radius: 50%;
   background: radial-gradient(circle at 30% 25%, var(--green-mid), var(--green-dark));
   display:flex; align-items:center; justify-content:center;
-  box-shadow: 0 6px 16px rgba(15,122,55,0.35);
+  box-shadow: 0 8px 18px rgba(51,70,200,0.30);
 }
 .brand-logo svg{ width:30px; height:30px; color:#fff; }
 
@@ -121,7 +138,7 @@ body{
   align-items:center;
   gap: 12px;
   background: var(--green-light);
-  border: 1px solid #bbf0cd;
+  border: 1px solid #d6dcff;
   border-radius: var(--radius-md);
   padding: 12px 14px;
   margin-bottom: 18px;
@@ -195,7 +212,7 @@ body{
 .menu-btn:hover{
   transform: translateY(-1px);
   box-shadow: var(--shadow);
-  border-color: #bfeccd;
+  border-color: #cdd5ff;
 }
 .menu-btn .m-icon{
   width:44px; height:44px;
@@ -210,9 +227,12 @@ body{
 .menu-btn .m-text span{ display:block; font-size: 0.72rem; color: var(--ink-soft); margin-top:2px; }
 .menu-btn .m-arrow{ color: var(--ink-faint); flex:0 0 auto; }
 
-.bg-electricity{ background: linear-gradient(135deg,#22c55e,#0f7a37); }
-.bg-water{ background: linear-gradient(135deg,#34d399,#0d9488); }
-.bg-telephone{ background: linear-gradient(135deg,#4ade80,#16a34a); }
+/* Category accent colors — varied pastel-to-solid tones,
+   the same way the reference screenshot gives each pill
+   (Prescriptions / Pills / Analyze) its own color. */
+.bg-electricity{ background: linear-gradient(135deg,var(--accent-amber),#e08a1c); }
+.bg-water{ background: linear-gradient(135deg,#5ad2ff,#1f8fd6); }
+.bg-telephone{ background: linear-gradient(135deg,var(--accent-purple),#5f3fe0); }
 
 /* ---------- Form elements ---------- */
 .field{ margin-bottom: 14px; }
@@ -244,7 +264,7 @@ body{
 .field input:focus,
 .field select:focus{
   border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(22,163,74,0.14);
+  box-shadow: 0 0 0 3px rgba(79,110,247,0.14);
 }
 
 /* ---- Fix for iOS Safari's oversized, centered native
@@ -300,7 +320,7 @@ body{
 /* ---------- SMS auto-fill box ---------- */
 .sms-box{
   background: var(--green-lighter);
-  border: 1px solid #d6f2e0;
+  border: 1px solid #dde3ff;
   border-radius: var(--radius-md);
   padding: 12px 13px;
   margin-bottom: 18px;
@@ -330,7 +350,7 @@ body{
 }
 .sms-box textarea:focus{
   border-color: var(--green);
-  box-shadow: 0 0 0 3px rgba(22,163,74,0.14);
+  box-shadow: 0 0 0 3px rgba(79,110,247,0.14);
 }
 .sms-hint{
   font-size: 0.66rem;
@@ -368,14 +388,14 @@ body{
 .btn-primary{
   background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
   color:#fff;
-  box-shadow: 0 6px 14px rgba(15,122,55,0.28);
+  box-shadow: 0 8px 16px rgba(51,70,200,0.28);
 }
 .btn-primary:disabled{ opacity:0.6; cursor:not-allowed; }
 
 .btn-secondary{
   background: var(--green-lighter);
   color: var(--green-dark);
-  border: 1px solid #bfeccd;
+  border: 1px solid #d6dcff;
 }
 
 .btn-outline{
@@ -456,13 +476,20 @@ body{
 .history-item .h-del:hover{ color: var(--danger); }
 .history-item .h-del svg{ width:15px; height:15px; }
 
+/* Category icon tints used on history.html so each row
+   reads at a glance, mirroring the reference screenshot's
+   use of a distinct pastel per category. */
+.history-item .h-icon.electricity{ background:var(--accent-amber-bg); color:#b96e0e; }
+.history-item .h-icon.water{ background:#e3f6ff; color:#1f8fd6; }
+.history-item .h-icon.telephone{ background:var(--accent-purple-bg); color:#5f3fe0; }
+
 .empty-state{
   text-align:center;
   padding: 26px 10px;
   color: var(--ink-faint);
   font-size: 0.8rem;
 }
-.empty-state svg{ width:34px; height:34px; margin-bottom:8px; color:#c8e6d3; }
+.empty-state svg{ width:34px; height:34px; margin-bottom:8px; color:#cdd5ff; }
 
 /* ---------- Misc ---------- */
 .sync-note{
@@ -488,6 +515,23 @@ body{
   margin-bottom: 16px;
 }
 .divider-row .btn{ margin-bottom:0; }
+
+/* ---------- Filter tabs (bills.html / history.html) ---------- */
+.filter-btn.active{
+  background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+  box-shadow: 0 6px 14px rgba(51,70,200,0.24);
+}
+
+/* ---------- Status / category tag chips ---------- */
+.cat-tag.electricity{ background:var(--accent-amber-bg); color:#b96e0e; }
+.cat-tag.water{ background:#e3f6ff; color:#1f8fd6; }
+.cat-tag.telephone{ background:var(--accent-purple-bg); color:#5f3fe0; }
+
+.status-pill.paid{ background: var(--green-light); color: var(--green-dark); }
+.status-pill.due{ background: var(--accent-amber-bg); color:#b96e0e; }
+
+.rent-icon.paid{ background: var(--green-lighter); color: var(--green-dark); }
+.rent-icon.pending{ background: var(--accent-amber-bg); color:#b96e0e; }
 
 @keyframes spin{ to{ transform: rotate(360deg); } }
 .spinner{

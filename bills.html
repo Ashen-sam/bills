@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Bills — Home Bills Tracker</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ---- Category tab styles (same look as the filter row on history.html) ---- */
+  .filter-row{
+    display:flex;
+    gap:8px;
+    margin-bottom: 18px;
+    overflow-x:auto;
+    padding-bottom: 2px;
+  }
+  .filter-btn{
+    flex: 1 1 0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    background: var(--white);
+    border: 1.4px solid var(--border);
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    font-weight:600;
+    padding: 10px 10px;
+    border-radius: 999px;
+    cursor:pointer;
+    white-space:nowrap;
+    font-family: inherit;
+    transition: all .12s ease;
+  }
+  .filter-btn svg{ width:14px; height:14px; }
+  .filter-btn.active{
+    background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+    border-color: transparent;
+    color: #fff;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <a href="index.html" class="icon-pill">
+      <i data-lucide="arrow-left"></i>
+      Home
+    </a>
+    <span class="icon-pill" id="statusPill">Connecting…</span>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo" id="brandLogo" style="background:linear-gradient(135deg, #22c55e, #0f7a37);">
+      <i data-lucide="zap" id="brandIcon"></i>
+    </div>
+    <h1 id="brandTitle">Electricity <span>Bills</span></h1>
+    <p id="brandTagline">Keep track of every electricity bill you've paid</p>
+  </div>
+
+  <div class="filter-row" id="filterRow">
+    <button class="filter-btn active" data-cat="electricity">
+      <i data-lucide="zap"></i> Electricity
+    </button>
+    <button class="filter-btn" data-cat="water">
+      <i data-lucide="droplet"></i> Water
+    </button>
+    <button class="filter-btn" data-cat="telephone">
+      <i data-lucide="phone"></i> Telephone
+    </button>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="stat-value" id="statMonth">Rs. 0</div>
+      <div class="stat-label">This Month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statYear">Rs. 0</div>
+      <div class="stat-label">This Year</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statTotal">Rs. 0</div>
+      <div class="stat-label">All Time</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="dot">
+        <i data-lucide="plus-circle"></i>
+      </span>
+      <h2>Add Paid Bill</h2>
+    </div>
+    <p class="card-sub">Record a bill you've just paid.</p>
+
+    <form id="billForm">
+
+      <div class="sms-box">
+        <label>
+          <i data-lucide="message-square-text"></i>
+          Paste Bill SMS (optional)
+        </label>
+        <textarea id="smsText" placeholder="Paste the payment confirmation SMS here…"></textarea>
+        <p class="sms-hint">iPhone can't share SMS with apps automatically — open Messages, long-press the SMS, tap Copy, then paste it here. We'll try to pull the amount &amp; date for you.</p>
+        <button type="button" class="btn btn-secondary btn-sm" id="parseSmsBtn">
+          <i data-lucide="wand-2"></i>
+          Auto-fill from SMS
+        </button>
+        <div id="parseResult" class="parse-result"></div>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="monthYear">
+            <i data-lucide="calendar-days"></i>
+            Billing Month
+          </label>
+          <input type="month" id="monthYear" required>
+        </div>
+
+        <div class="field">
+          <label for="amountPaid">
+            <i data-lucide="banknote"></i>
+            Amount Paid (LKR)
+          </label>
+          <input type="number" id="amountPaid" placeholder="e.g. 5500" min="0" step="0.01" required>
+        </div>
+
+        <div class="field">
+          <label for="datePaid">
+            <i data-lucide="calendar-check-2"></i>
+            Date Paid
+          </label>
+          <input type="date" id="datePaid" required>
+        </div>
+
+        <div class="field">
+          <label for="notes">
+            <i data-lucide="file-text"></i>
+            Notes (optional)
+          </label>
+          <input type="text" id="notes" placeholder="e.g. Account no. / reference">
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="saveBtn" style="margin-top:6px;">
+        <i data-lucide="save"></i>
+        Save Paid Bill
+      </button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="dot">
+        <i data-lucide="history"></i>
+      </span>
+      <h2>Payment History</h2>
+    </div>
+    <p class="card-sub" id="historySub">Most recent payments first.</p>
+
+    <div id="historyList"></div>
+
+    <button class="btn btn-secondary" id="exportBtn" style="margin-top:14px;">
+      <i data-lucide="download"></i>
+      Export as PDF
+    </button>
+  </div>
+
+  <p class="sync-note" id="syncNote">Syncing with JSONBin…</p>
+  <p class="footer-note">All amounts shown in Sri Lankan Rupees (LKR).</p>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="app.js"></script>
+<script>
+/* ============================================
+   Combined Electricity / Water / Telephone page
+   Category tabs switch which bucket the form
+   saves into and which history/stats are shown,
+   while every other behaviour (SMS autofill,
+   PDF export, add/delete) stays identical to
+   the original per-category pages.
+   ============================================ */
+
+const CATEGORIES = {
+  electricity: {
+    label: "Electricity",
+    icon: "zap",
+    gradient: "linear-gradient(135deg, #22c55e, #0f7a37)",
+    pdfColor: [15, 122, 55],
+    pdfFootFill: [220, 252, 231],
+    tagline: "Keep track of every electricity bill you've paid"
+  },
+  water: {
+    label: "Water",
+    icon: "droplet",
+    gradient: "linear-gradient(135deg, #34d399, #0d9488)",
+    pdfColor: [13, 148, 136],
+    pdfFootFill: [204, 251, 241],
+    tagline: "Keep track of every water bill you've paid"
+  },
+  telephone: {
+    label: "Telephone / WiFi",
+    icon: "phone",
+    gradient: "linear-gradient(135deg, #4ade80, #16a34a)",
+    pdfColor: [22, 163, 74],
+    pdfFootFill: [220, 252, 231],
+    tagline: "Keep track of every phone & internet bill you've paid"
+  }
+};
+
+let currentCategory = "electricity";
+let currentStore = null;
+
+const historyList = document.getElementById("historyList");
+const statusPill = document.getElementById("statusPill");
+const syncNote = document.getElementById("syncNote");
+const saveBtn = document.getElementById("saveBtn");
+const brandLogo = document.getElementById("brandLogo");
+const brandIcon = document.getElementById("brandIcon");
+const brandTitle = document.getElementById("brandTitle");
+const brandTagline = document.getElementById("brandTagline");
+const historySub = document.getElementById("historySub");
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ---------- Brand / tab UI for the active category ---------- */
+function applyBrand(cat){
+  const c = CATEGORIES[cat];
+  brandLogo.style.background = c.gradient;
+  brandIcon.setAttribute("data-lucide", c.icon);
+  brandTitle.innerHTML = c.label + ' <span>Bills</span>';
+  brandTagline.textContent = c.tagline;
+  historySub.textContent = "Most recent " + c.label.toLowerCase() + " payments first.";
+
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.cat === cat);
+  });
+
+  renderIcons();
+}
+
+/* ---------- History list for the active category ---------- */
+function renderList(bills){
+  const sorted = sortByDatePaidDesc(bills);
+
+  if (sorted.length === 0){
+    historyList.innerHTML = `
+      <div class="empty-state">
+        ${iconTag("inbox")}
+        <div>No paid bills yet. Add your first one above.</div>
+      </div>`;
+    renderIcons();
+    return;
+  }
+
+  historyList.innerHTML = sorted.map(b => `
+    <div class="history-item" data-id="${b.id}">
+      <span class="h-icon">${iconTag("calendar")}</span>
+      <span class="h-main">
+        <strong>${formatMonthYear(b.monthYear)}</strong>
+        <span>Paid on ${formatDate(b.datePaid)}${b.notes ? " · " + escapeHtml(b.notes) : ""}</span>
+      </span>
+      <span class="h-amount">
+        <span class="amt">${formatLKR(b.amountPaid)}</span>
+      </span>
+      <button class="h-del" title="Delete" data-id="${b.id}">${iconTag("trash-2")}</button>
+    </div>
+  `).join("");
+
+  renderIcons();
+
+  historyList.querySelectorAll(".h-del").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this paid bill record?")) return;
+      btn.disabled = true;
+      try{
+        const updated = await deleteBill(currentCategory, btn.dataset.id);
+        currentStore[currentCategory] = updated;
+        renderList(updated);
+        updateStats(updated);
+      }catch(e){
+        alert("Could not delete: " + e.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function updateStats(bills){
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  const thisYear = now.getFullYear().toString();
+  let monthTotal = 0, yearTotal = 0, allTotal = 0;
+  bills.forEach(b => {
+    const amt = Number(b.amountPaid) || 0;
+    allTotal += amt;
+    if ((b.datePaid || "").startsWith(thisMonth)) monthTotal += amt;
+    if ((b.datePaid || "").startsWith(thisYear)) yearTotal += amt;
+  });
+  document.getElementById("statMonth").textContent = formatLKR(monthTotal);
+  document.getElementById("statYear").textContent = formatLKR(yearTotal);
+  document.getElementById("statTotal").textContent = formatLKR(allTotal);
+}
+
+function resetFormDefaults(){
+  document.getElementById("billForm").reset();
+  document.getElementById("datePaid").valueAsDate = new Date();
+  document.getElementById("monthYear").value = new Date().toISOString().slice(0,7);
+  document.getElementById("parseResult").textContent = "";
+}
+
+/* ---------- Switching category tabs ---------- */
+function switchCategory(cat){
+  currentCategory = cat;
+  applyBrand(cat);
+  resetFormDefaults();
+  if (currentStore){
+    renderList(currentStore[cat]);
+    updateStats(currentStore[cat]);
+  }
+}
+
+document.getElementById("filterRow").addEventListener("click", (e) => {
+  const btn = e.target.closest(".filter-btn");
+  if (!btn) return;
+  switchCategory(btn.dataset.cat);
+});
+
+/* ---------- Init ---------- */
+async function init(){
+  renderIcons();
+  wireSmsAutofill();
+  applyBrand(currentCategory);
+  try{
+    const store = await loadStore();
+    currentStore = store;
+    statusPill.textContent = "Online";
+    syncNote.textContent = "Synced with JSONBin";
+    renderList(store[currentCategory]);
+    updateStats(store[currentCategory]);
+    resetFormDefaults();
+  }catch(e){
+    statusPill.textContent = "Offline";
+    syncNote.textContent = "Could not sync — check your connection";
+    syncNote.classList.add("error");
+    console.error(e);
+  }
+}
+
+/* ---------- Save ---------- */
+document.getElementById("billForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const monthYear = document.getElementById("monthYear").value;
+  const amountPaid = document.getElementById("amountPaid").value;
+  const datePaid = document.getElementById("datePaid").value;
+  const notes = document.getElementById("notes").value.trim();
+
+  if (!monthYear || !amountPaid || !datePaid){
+    alert("Please fill in billing month, amount and date paid.");
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spinner"></span> Saving…';
+  try{
+    const updated = await addBill(currentCategory, { monthYear, amountPaid, datePaid, notes });
+    if (currentStore) currentStore[currentCategory] = updated;
+    renderList(updated);
+    updateStats(updated);
+    resetFormDefaults();
+  }catch(err){
+    alert("Could not save bill: " + err.message);
+  }finally{
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = iconTag("save") + " Save Paid Bill";
+    renderIcons();
+  }
+});
+
+/* ---------- Export as PDF (active category only) ---------- */
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  try{
+    const store = await loadStore();
+    currentStore = store;
+    const c = CATEGORIES[currentCategory];
+    const bills = sortByDatePaidDesc(store[currentCategory]);
+    if (bills.length === 0){
+      alert("No paid bills to export yet.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(15);
+    doc.setTextColor(c.pdfColor[0], c.pdfColor[1], c.pdfColor[2]);
+    doc.text(c.label + " — Payment History", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120,120,120);
+    doc.text("Generated " + new Date().toLocaleString("en-GB"), 14, 22);
+
+    const rows = bills.map(b => [
+      formatMonthYear(b.monthYear),
+      formatLKR(b.amountPaid),
+      formatDate(b.datePaid),
+      b.notes || "-"
+    ]);
+    const total = bills.reduce((s,b) => s + (Number(b.amountPaid)||0), 0);
+
+    doc.autoTable({
+      startY: 28,
+      head: [["Billing Month", "Amount Paid", "Date Paid", "Notes"]],
+      body: rows,
+      foot: [["Total", formatLKR(total), "", ""]],
+      headStyles: { fillColor: c.pdfColor },
+      footStyles: { fillColor: c.pdfFootFill, textColor: c.pdfColor, fontStyle: "bold" },
+      styles: { fontSize: 9 }
+    });
+
+    doc.save(currentCategory + "-bills.pdf");
+  }catch(e){
+    alert("Could not export PDF: " + e.message);
+  }
+});
+
+init();
+</script>
+</body>
+</html>
