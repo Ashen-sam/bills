@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Water Bills — Home Bills Tracker</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <a href="index.html" class="icon-pill">
+      <i data-lucide="arrow-left"></i>
+      Home
+    </a>
+    <span class="icon-pill" id="statusPill">Connecting…</span>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo" style="background:linear-gradient(135deg, #34d399, #0d9488);">
+      <i data-lucide="droplet"></i>
+    </div>
+    <h1>Water <span>Bills</span></h1>
+    <p>Keep track of every water bill you've paid</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="stat-value" id="statMonth">Rs. 0</div>
+      <div class="stat-label">This Month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statYear">Rs. 0</div>
+      <div class="stat-label">This Year</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statTotal">Rs. 0</div>
+      <div class="stat-label">All Time</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="dot">
+        <i data-lucide="plus-circle"></i>
+      </span>
+      <h2>Add Paid Bill</h2>
+    </div>
+    <p class="card-sub">Record a bill you've just paid.</p>
+
+    <form id="billForm">
+      <div class="field">
+        <label for="monthYear">
+          <i data-lucide="calendar-days"></i>
+          Billing Month
+        </label>
+        <input type="month" id="monthYear" required>
+      </div>
+
+      <div class="field">
+        <label for="amountPaid">
+          <i data-lucide="banknote"></i>
+          Amount Paid (LKR)
+        </label>
+        <input type="number" id="amountPaid" placeholder="e.g. 5500" min="0" step="0.01" required>
+      </div>
+
+      <div class="field">
+        <label for="datePaid">
+          <i data-lucide="calendar-check-2"></i>
+          Date Paid
+        </label>
+        <input type="date" id="datePaid" required>
+      </div>
+
+      <div class="field">
+        <label for="notes">
+          <i data-lucide="file-text"></i>
+          Notes (optional)
+        </label>
+        <input type="text" id="notes" placeholder="e.g. Account no. / reference">
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="saveBtn">
+        <i data-lucide="save"></i>
+        Save Paid Bill
+      </button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="dot">
+        <i data-lucide="history"></i>
+      </span>
+      <h2>Payment History</h2>
+    </div>
+    <p class="card-sub">Most recent payments first.</p>
+
+    <div id="historyList"></div>
+
+    <button class="btn btn-secondary" id="exportBtn" style="margin-top:14px;">
+      <i data-lucide="download"></i>
+      Export as PDF
+    </button>
+  </div>
+
+  <p class="sync-note" id="syncNote">Syncing with JSONBin…</p>
+  <p class="footer-note">All amounts shown in Sri Lankan Rupees (LKR).</p>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="app.js"></script>
+<script>
+const CATEGORY = "water";
+const CATEGORY_LABEL = "Water";
+
+const historyList = document.getElementById("historyList");
+const statusPill = document.getElementById("statusPill");
+const syncNote = document.getElementById("syncNote");
+const saveBtn = document.getElementById("saveBtn");
+
+function renderList(bills){
+  const sorted = sortByDatePaidDesc(bills);
+
+  if (sorted.length === 0){
+    historyList.innerHTML = `
+      <div class="empty-state">
+        ${iconTag("inbox")}
+        <div>No paid bills yet. Add your first one above.</div>
+      </div>`;
+    renderIcons();
+    return;
+  }
+
+  historyList.innerHTML = sorted.map(b => `
+    <div class="history-item" data-id="${b.id}">
+      <span class="h-icon">${iconTag("calendar")}</span>
+      <span class="h-main">
+        <strong>${formatMonthYear(b.monthYear)}</strong>
+        <span>Paid on ${formatDate(b.datePaid)}${b.notes ? " · " + escapeHtml(b.notes) : ""}</span>
+      </span>
+      <span class="h-amount">
+        <span class="amt">${formatLKR(b.amountPaid)}</span>
+      </span>
+      <button class="h-del" title="Delete" data-id="${b.id}">${iconTag("trash-2")}</button>
+    </div>
+  `).join("");
+
+  renderIcons();
+
+  historyList.querySelectorAll(".h-del").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this paid bill record?")) return;
+      btn.disabled = true;
+      try{
+        const updated = await deleteBill(CATEGORY, btn.dataset.id);
+        renderList(updated);
+        updateStats(updated);
+      }catch(e){
+        alert("Could not delete: " + e.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function updateStats(bills){
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  const thisYear = now.getFullYear().toString();
+  let monthTotal = 0, yearTotal = 0, allTotal = 0;
+  bills.forEach(b => {
+    const amt = Number(b.amountPaid) || 0;
+    allTotal += amt;
+    if ((b.datePaid || "").startsWith(thisMonth)) monthTotal += amt;
+    if ((b.datePaid || "").startsWith(thisYear)) yearTotal += amt;
+  });
+  document.getElementById("statMonth").textContent = formatLKR(monthTotal);
+  document.getElementById("statYear").textContent = formatLKR(yearTotal);
+  document.getElementById("statTotal").textContent = formatLKR(allTotal);
+}
+
+async function init(){
+  renderIcons();
+  try{
+    const store = await loadStore();
+    statusPill.textContent = "Online";
+    syncNote.textContent = "Synced with JSONBin";
+    renderList(store[CATEGORY]);
+    updateStats(store[CATEGORY]);
+    // sensible defaults
+    document.getElementById("datePaid").valueAsDate = new Date();
+    document.getElementById("monthYear").value = new Date().toISOString().slice(0,7);
+  }catch(e){
+    statusPill.textContent = "Offline";
+    syncNote.textContent = "Could not sync — check your connection";
+    syncNote.classList.add("error");
+    console.error(e);
+  }
+}
+
+document.getElementById("billForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const monthYear = document.getElementById("monthYear").value;
+  const amountPaid = document.getElementById("amountPaid").value;
+  const datePaid = document.getElementById("datePaid").value;
+  const notes = document.getElementById("notes").value.trim();
+
+  if (!monthYear || !amountPaid || !datePaid){
+    alert("Please fill in billing month, amount and date paid.");
+    return;
+  }
+
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spinner"></span> Saving…';
+  try{
+    const updated = await addBill(CATEGORY, { monthYear, amountPaid, datePaid, notes });
+    renderList(updated);
+    updateStats(updated);
+    e.target.reset();
+    document.getElementById("datePaid").valueAsDate = new Date();
+    document.getElementById("monthYear").value = new Date().toISOString().slice(0,7);
+  }catch(err){
+    alert("Could not save bill: " + err.message);
+  }finally{
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = iconTag("save") + " Save Paid Bill";
+    renderIcons();
+  }
+});
+
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  try{
+    const store = await loadStore();
+    const bills = sortByDatePaidDesc(store[CATEGORY]);
+    if (bills.length === 0){
+      alert("No paid bills to export yet.");
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(15);
+    doc.setTextColor(15, 122, 55);
+    doc.text(CATEGORY_LABEL + " — Payment History", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120,120,120);
+    doc.text("Generated " + new Date().toLocaleString("en-GB"), 14, 22);
+
+    const rows = bills.map(b => [
+      formatMonthYear(b.monthYear),
+      formatLKR(b.amountPaid),
+      formatDate(b.datePaid),
+      b.notes || "-"
+    ]);
+    const total = bills.reduce((s,b) => s + (Number(b.amountPaid)||0), 0);
+
+    doc.autoTable({
+      startY: 28,
+      head: [["Billing Month", "Amount Paid", "Date Paid", "Notes"]],
+      body: rows,
+      foot: [["Total", formatLKR(total), "", ""]],
+      headStyles: { fillColor: [15,122,55] },
+      footStyles: { fillColor: [220,252,231], textColor: [15,122,55], fontStyle: "bold" },
+      styles: { fontSize: 9 }
+    });
+
+    doc.save(CATEGORY + "-bills.pdf");
+  }catch(e){
+    alert("Could not export PDF: " + e.message);
+  }
+});
+
+init();
+</script>
+</body>
+</html>

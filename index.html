@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Home Bills Tracker</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <span class="icon-pill">
+      <i data-lucide="banknote"></i>
+      LKR
+    </span>
+    <span class="icon-pill" id="statusPill">Connecting…</span>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo">
+      <i data-lucide="receipt"></i>
+    </div>
+    <h1>Home Bills <span>Tracker</span></h1>
+    <p>Electricity &middot; Water &middot; Telephone / WiFi — track every paid bill</p>
+  </div>
+
+  <div class="banner">
+    <div class="banner-icon">
+      <i data-lucide="shield-check"></i>
+    </div>
+    <div>
+      <strong>Synced online with JSONBin</strong>
+      <small>Your paid bills are saved automatically</small>
+    </div>
+  </div>
+
+  <div class="stat-row" id="statRow" style="display:none;">
+    <div class="stat-box">
+      <div class="stat-value" id="statMonth">Rs. 0</div>
+      <div class="stat-label">This Month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statYear">Rs. 0</div>
+      <div class="stat-label">This Year</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statCount">0</div>
+      <div class="stat-label">Bills Paid</div>
+    </div>
+  </div>
+
+  <a href="electricity.html" class="menu-btn">
+    <span class="m-icon bg-electricity">
+      <i data-lucide="zap"></i>
+    </span>
+    <span class="m-text">
+      <strong>Electricity</strong>
+      <span>View history &amp; add a paid bill</span>
+    </span>
+    <span class="m-arrow">
+      <i data-lucide="chevron-right"></i>
+    </span>
+  </a>
+
+  <a href="water.html" class="menu-btn">
+    <span class="m-icon bg-water">
+      <i data-lucide="droplet"></i>
+    </span>
+    <span class="m-text">
+      <strong>Water</strong>
+      <span>View history &amp; add a paid bill</span>
+    </span>
+    <span class="m-arrow">
+      <i data-lucide="chevron-right"></i>
+    </span>
+  </a>
+
+  <a href="telephone.html" class="menu-btn">
+    <span class="m-icon bg-telephone">
+      <i data-lucide="phone"></i>
+    </span>
+    <span class="m-text">
+      <strong>Telephone / WiFi</strong>
+      <span>View history &amp; add a paid bill</span>
+    </span>
+    <span class="m-arrow">
+      <i data-lucide="chevron-right"></i>
+    </span>
+  </a>
+
+  <p class="footer-note">
+    All amounts in Sri Lankan Rupees (LKR). Data is stored securely online so it stays available across visits.
+  </p>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="app.js"></script>
+<script>
+async function init(){
+  renderIcons();
+  const pill = document.getElementById("statusPill");
+  try{
+    const store = await loadStore();
+    pill.textContent = "Online";
+
+    const all = [
+      ...store.electricity.map(b => ({...b, cat:"electricity"})),
+      ...store.water.map(b => ({...b, cat:"water"})),
+      ...store.telephone.map(b => ({...b, cat:"telephone"})),
+    ];
+
+    const now = new Date();
+    const thisMonth = now.toISOString().slice(0,7);
+    const thisYear = now.getFullYear().toString();
+
+    let monthTotal = 0, yearTotal = 0;
+    all.forEach(b => {
+      const amt = Number(b.amountPaid) || 0;
+      if ((b.datePaid || "").startsWith(thisMonth)) monthTotal += amt;
+      if ((b.datePaid || "").startsWith(thisYear)) yearTotal += amt;
+    });
+
+    document.getElementById("statMonth").textContent = formatLKR(monthTotal);
+    document.getElementById("statYear").textContent = formatLKR(yearTotal);
+    document.getElementById("statCount").textContent = all.length;
+    document.getElementById("statRow").style.display = "flex";
+  }catch(e){
+    pill.textContent = "Offline";
+    console.error(e);
+  }
+}
+init();
+</script>
+</body>
+</html>
