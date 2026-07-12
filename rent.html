@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Rent — Home Bills Tracker</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ---- Rent page-specific styles (kept local to this page) ---- */
+  .rent-config{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    margin-bottom:16px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .rent-config .field{ flex:1; margin-bottom:0; }
+  .rent-config .btn{ width:auto; padding:11px 16px; white-space:nowrap; }
+
+  .rent-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .rent-row.current{
+    background: linear-gradient(90deg, rgba(22,163,74,0.06), transparent);
+    border-radius: 10px;
+    padding-left:8px;
+    padding-right:8px;
+    margin: 0 -8px;
+  }
+  .rent-row-main{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .rent-icon{
+    width:36px;height:36px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  }
+  .rent-icon.paid{ background:var(--green-lighter); color:var(--green-dark); }
+  .rent-icon.pending{ background:#fff7ed; color:#c2650a; }
+  .rent-icon svg{ width:16px; height:16px; }
+  .rent-info{ min-width:0; }
+  .rent-info strong{ display:block; font-size:0.84rem; color:var(--ink); }
+  .rent-info .rent-sub{ display:block; font-size:0.7rem; color:var(--ink-soft); margin-top:1px; }
+  .rent-row-action{ display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+  .status-pill{
+    font-size:0.66rem; font-weight:700; padding:4px 10px; border-radius:999px;
+    white-space:nowrap;
+  }
+  .status-pill.paid{ background:var(--green-light); color:var(--green-dark); }
+  .status-pill.due{ background:#fff7ed; color:#c2650a; }
+  .rent-undo{ background:none;border:none;cursor:pointer;color:var(--ink-faint);padding:4px; flex:0 0 auto; }
+  .rent-undo:hover{ color:var(--danger); }
+  .rent-undo svg{ width:14px;height:14px; }
+
+  .rent-inline-form{
+    background:var(--green-lighter);
+    border:1px solid #d6f2e0;
+    border-radius:var(--radius-md);
+    padding:14px;
+    margin: 2px 0 12px;
+  }
+  .rent-inline-form .field{ margin-bottom:10px; }
+  .rent-inline-form label{ font-size:0.72rem; font-weight:600; color:var(--ink); display:block; margin-bottom:4px; }
+  .rent-inline-form input{
+    width:100%; padding:9px 11px; border-radius:8px; border:1.4px solid var(--border);
+    font-size:0.8rem; font-family:inherit; outline:none; box-sizing:border-box;
+    background: var(--white);
+  }
+  .rent-inline-form input:focus{
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.14);
+  }
+  .rent-inline-actions{ display:flex; gap:8px; margin-top:4px; }
+  .rent-inline-actions .btn{ flex:1; }
+  .btn-sm{ padding:9px 12px; font-size:0.78rem; }
+  .btn-outline{
+    background: var(--white);
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <a href="index.html" class="icon-pill">
+      <i data-lucide="arrow-left"></i>
+      Home
+    </a>
+    <span class="icon-pill" id="statusPill">Connecting…</span>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo" style="background:linear-gradient(135deg, #f59e0b, #b45309);">
+      <i data-lucide="key"></i>
+    </div>
+    <h1>Annex <span>Rent</span></h1>
+    <p>Track the monthly rent your tenant pays you</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="stat-value" id="statMonth">Rs. 0</div>
+      <div class="stat-label">This Month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statYear">Rs. 0</div>
+      <div class="stat-label">This Year</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statTotal">Rs. 0</div>
+      <div class="stat-label">All Time</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="dot">
+        <i data-lucide="calendar-range"></i>
+      </span>
+      <h2>Yearly Rent Schedule</h2>
+    </div>
+    <p class="card-sub">Starting July 2026 · Rs. 35,000 / month · rolls forward automatically.</p>
+
+    <div class="rent-config">
+      <div class="field">
+        <label for="rentAmount" style="display:flex;align-items:center;gap:6px;font-size:0.78rem;font-weight:600;color:var(--ink);margin-bottom:6px;">
+          <i data-lucide="banknote" style="width:14px;height:14px;color:var(--green-dark);"></i>
+          Monthly Rent (LKR)
+        </label>
+        <input type="number" id="rentAmount" min="0" step="0.01">
+      </div>
+      <button class="btn btn-secondary btn-sm" id="saveRentAmountBtn">
+        <i data-lucide="save"></i>
+        Save
+      </button>
+    </div>
+
+    <div id="scheduleList"></div>
+
+    <button class="btn btn-secondary" id="exportBtn" style="margin-top:14px;">
+      <i data-lucide="download"></i>
+      Export as PDF
+    </button>
+  </div>
+
+  <p class="sync-note" id="syncNote">Syncing with JSONBin…</p>
+  <p class="footer-note">All amounts shown in Sri Lankan Rupees (LKR).</p>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="app.js"></script>
+<script>
+const RENT_START_MONTH = "2026-07";
+
+const statusPill = document.getElementById("statusPill");
+const syncNote = document.getElementById("syncNote");
+const scheduleList = document.getElementById("scheduleList");
+const rentAmountInput = document.getElementById("rentAmount");
+const saveRentAmountBtn = document.getElementById("saveRentAmountBtn");
+
+const currentMonthStr = new Date().toISOString().slice(0,7);
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function findPayment(rentList, monthStr){
+  return rentList.find(b => b.monthYear === monthStr) || null;
+}
+
+function renderSchedule(store){
+  const months = getRentMonthList(RENT_START_MONTH);
+  const rentAmount = (store.rentConfig && store.rentConfig.amount) || DEFAULT_RENT_AMOUNT;
+
+  scheduleList.innerHTML = months.map(monthStr => {
+    const paidEntry = findPayment(store.rent, monthStr);
+    const label = formatMonthYear(monthStr);
+    const isCurrent = monthStr === currentMonthStr;
+
+    if (paidEntry){
+      return `
+      <div class="rent-row${isCurrent ? " current" : ""}" data-month="${monthStr}">
+        <div class="rent-row-main">
+          <span class="rent-icon paid">${iconTag("check")}</span>
+          <span class="rent-info">
+            <strong>${label}</strong>
+            <span class="rent-sub">Paid on ${formatDate(paidEntry.datePaid)} · ${formatLKR(paidEntry.amountPaid)}${paidEntry.notes ? " · " + escapeHtml(paidEntry.notes) : ""}</span>
+          </span>
+        </div>
+        <div class="rent-row-action">
+          <span class="status-pill paid">Paid</span>
+          <button class="rent-undo" title="Undo" data-month="${monthStr}">${iconTag("rotate-ccw")}</button>
+        </div>
+      </div>`;
+    }
+
+    return `
+    <div class="rent-row${isCurrent ? " current" : ""}" data-month="${monthStr}">
+      <div class="rent-row-main">
+        <span class="rent-icon pending">${iconTag("clock")}</span>
+        <span class="rent-info">
+          <strong>${label}</strong>
+          <span class="rent-sub">Expected ${formatLKR(rentAmount)}</span>
+        </span>
+      </div>
+      <div class="rent-row-action">
+        <span class="status-pill due">Pending</span>
+        <button class="btn btn-secondary btn-sm mark-paid-btn" data-month="${monthStr}">Mark Paid</button>
+      </div>
+    </div>
+    <div class="rent-inline-form" id="form-${monthStr}" style="display:none;">
+      <div class="field">
+        <label>Date Paid</label>
+        <input type="date" id="date-${monthStr}">
+      </div>
+      <div class="field">
+        <label>Amount Paid (LKR)</label>
+        <input type="number" id="amount-${monthStr}" min="0" step="0.01" value="${rentAmount}">
+      </div>
+      <div class="field">
+        <label>Notes (optional)</label>
+        <input type="text" id="notes-${monthStr}" placeholder="e.g. Paid via bank transfer">
+      </div>
+      <div class="rent-inline-actions">
+        <button class="btn btn-primary btn-sm confirm-paid-btn" data-month="${monthStr}">
+          <i data-lucide="check"></i> Confirm
+        </button>
+        <button class="btn btn-outline btn-sm cancel-paid-btn" data-month="${monthStr}">Cancel</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  renderIcons();
+  wireScheduleEvents();
+
+  // default the date field to today for whichever form is opened
+  months.forEach(monthStr => {
+    const dateField = document.getElementById(`date-${monthStr}`);
+    if (dateField) dateField.valueAsDate = new Date();
+  });
+}
+
+function wireScheduleEvents(){
+  scheduleList.querySelectorAll(".mark-paid-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const form = document.getElementById(`form-${btn.dataset.month}`);
+      if (form) form.style.display = "block";
+    });
+  });
+
+  scheduleList.querySelectorAll(".cancel-paid-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const form = document.getElementById(`form-${btn.dataset.month}`);
+      if (form) form.style.display = "none";
+    });
+  });
+
+  scheduleList.querySelectorAll(".confirm-paid-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const monthStr = btn.dataset.month;
+      const datePaid = document.getElementById(`date-${monthStr}`).value;
+      const amountPaid = document.getElementById(`amount-${monthStr}`).value;
+      const notes = document.getElementById(`notes-${monthStr}`).value.trim();
+
+      if (!datePaid || !amountPaid){
+        alert("Please fill in the date paid and amount.");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Saving…';
+      try{
+        const store = await addRentPayment({ monthYear: monthStr, datePaid, amountPaid, notes });
+        renderSchedule(store);
+        updateStats(store);
+      }catch(e){
+        alert("Could not save: " + e.message);
+        btn.disabled = false;
+        btn.innerHTML = iconTag("check") + " Confirm";
+        renderIcons();
+      }
+    });
+  });
+
+  scheduleList.querySelectorAll(".rent-undo").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Undo this payment record?")) return;
+      btn.disabled = true;
+      try{
+        const store = await deleteRentPayment(btn.dataset.month);
+        renderSchedule(store);
+        updateStats(store);
+      }catch(e){
+        alert("Could not undo: " + e.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function updateStats(store){
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  const thisYear = now.getFullYear().toString();
+  let monthTotal = 0, yearTotal = 0, allTotal = 0;
+
+  store.rent.forEach(b => {
+    const amt = Number(b.amountPaid) || 0;
+    allTotal += amt;
+    if ((b.datePaid || "").startsWith(thisMonth)) monthTotal += amt;
+    if ((b.datePaid || "").startsWith(thisYear)) yearTotal += amt;
+  });
+
+  document.getElementById("statMonth").textContent = formatLKR(monthTotal);
+  document.getElementById("statYear").textContent = formatLKR(yearTotal);
+  document.getElementById("statTotal").textContent = formatLKR(allTotal);
+}
+
+saveRentAmountBtn.addEventListener("click", async () => {
+  const amount = rentAmountInput.value;
+  if (!amount || Number(amount) <= 0){
+    alert("Please enter a valid monthly rent amount.");
+    return;
+  }
+  saveRentAmountBtn.disabled = true;
+  try{
+    const store = await saveRentConfig(amount);
+    renderSchedule(store);
+  }catch(e){
+    alert("Could not save rent amount: " + e.message);
+  }finally{
+    saveRentAmountBtn.disabled = false;
+  }
+});
+
+document.getElementById("exportBtn").addEventListener("click", async () => {
+  try{
+    const store = await loadStore();
+    const months = getRentMonthList(RENT_START_MONTH);
+    const rentAmount = (store.rentConfig && store.rentConfig.amount) || DEFAULT_RENT_AMOUNT;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(15);
+    doc.setTextColor(180, 83, 9);
+    doc.text("Annex Rent — Yearly Schedule", 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(120,120,120);
+    doc.text("Generated " + new Date().toLocaleString("en-GB"), 14, 22);
+
+    const rows = months.map(monthStr => {
+      const paidEntry = findPayment(store.rent, monthStr);
+      if (paidEntry){
+        return [formatMonthYear(monthStr), "Paid", formatLKR(paidEntry.amountPaid), formatDate(paidEntry.datePaid), paidEntry.notes || "-"];
+      }
+      return [formatMonthYear(monthStr), "Pending", formatLKR(rentAmount), "-", "-"];
+    });
+
+    const total = store.rent.reduce((s,b) => s + (Number(b.amountPaid)||0), 0);
+
+    doc.autoTable({
+      startY: 28,
+      head: [["Month", "Status", "Amount", "Date Paid", "Notes"]],
+      body: rows,
+      foot: [["Total Received", "", formatLKR(total), "", ""]],
+      headStyles: { fillColor: [180,83,9] },
+      footStyles: { fillColor: [255,247,237], textColor: [180,83,9], fontStyle: "bold" },
+      styles: { fontSize: 9 }
+    });
+
+    doc.save("rent-schedule.pdf");
+  }catch(e){
+    alert("Could not export PDF: " + e.message);
+  }
+});
+
+async function init(){
+  renderIcons();
+  try{
+    const store = await loadStore();
+    statusPill.textContent = "Online";
+    syncNote.textContent = "Synced with JSONBin";
+    rentAmountInput.value = (store.rentConfig && store.rentConfig.amount) || DEFAULT_RENT_AMOUNT;
+    renderSchedule(store);
+    updateStats(store);
+  }catch(e){
+    statusPill.textContent = "Offline";
+    syncNote.textContent = "Could not sync — check your connection";
+    syncNote.classList.add("error");
+    console.error(e);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

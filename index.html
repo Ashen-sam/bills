@@ -89,6 +89,19 @@
     </span>
   </a>
 
+  <a href="rent.html" class="menu-btn">
+    <span class="m-icon" style="background:linear-gradient(135deg,#f59e0b,#b45309);">
+      <i data-lucide="key"></i>
+    </span>
+    <span class="m-text">
+      <strong>Annex Rent</strong>
+      <span>Yearly schedule &amp; mark payments received</span>
+    </span>
+    <span class="m-arrow">
+      <i data-lucide="chevron-right"></i>
+    </span>
+  </a>
+
   <p class="footer-note">
     All amounts in Sri Lankan Rupees (LKR). Data is stored securely online so it stays available across visits.
   </p>
@@ -109,6 +122,7 @@ async function init(){
       ...store.electricity.map(b => ({...b, cat:"electricity"})),
       ...store.water.map(b => ({...b, cat:"water"})),
       ...store.telephone.map(b => ({...b, cat:"telephone"})),
+      ...(store.rent || []).map(b => ({...b, cat:"rent"})),
     ];
 
     const now = new Date();

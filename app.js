@@ -13,9 +13,18 @@ const JSONBIN_BIN_ID = "6a532434f5f4af5e29831063";
 
 const JSONBIN_API = "https://api.jsonbin.io/v3/b";
 
+// Default monthly rent amount for the annex
+const DEFAULT_RENT_AMOUNT = 35000;
+
 // The shape of a brand new bin
 function emptyStore(){
-  return { electricity: [], water: [], telephone: [] };
+  return {
+    electricity: [],
+    water: [],
+    telephone: [],
+    rent: [],
+    rentConfig: { amount: DEFAULT_RENT_AMOUNT }
+  };
 }
 
 /* ---------- Read / write ---------- */
@@ -30,6 +39,8 @@ async function loadStore(){
   record.electricity = record.electricity || [];
   record.water = record.water || [];
   record.telephone = record.telephone || [];
+  record.rent = record.rent || [];
+  record.rentConfig = record.rentConfig || { amount: DEFAULT_RENT_AMOUNT };
   return record;
 }
 
@@ -60,6 +71,65 @@ async function deleteBill(category, id){
   store[category] = store[category].filter(b => b.id !== id);
   await saveStore(store);
   return store[category];
+}
+
+/* ---------- Rent helpers ----------
+   Rent is tracked one entry per calendar month (keyed by monthYear,
+   e.g. "2026-07") rather than an open list like the utility bills,
+   since there's exactly one rent payment expected per month. */
+async function addRentPayment(entry){
+  const store = await loadStore();
+  // replace any existing entry for that month (lets you correct a mistake)
+  store.rent = store.rent.filter(b => b.monthYear !== entry.monthYear);
+  entry.id = "r_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+  store.rent.push(entry);
+  await saveStore(store);
+  return store;
+}
+
+async function deleteRentPayment(monthYear){
+  const store = await loadStore();
+  store.rent = store.rent.filter(b => b.monthYear !== monthYear);
+  await saveStore(store);
+  return store;
+}
+
+async function saveRentConfig(amount){
+  const store = await loadStore();
+  store.rentConfig = { amount: Number(amount) || DEFAULT_RENT_AMOUNT };
+  await saveStore(store);
+  return store;
+}
+
+/* ---------- Month math (used by the rent schedule) ---------- */
+function monthDiff(a, b){
+  // a, b are "YYYY-MM" strings. Returns b - a, in months.
+  const [ay, am] = a.split("-").map(Number);
+  const [by, bm] = b.split("-").map(Number);
+  return (by - ay) * 12 + (bm - am);
+}
+
+function addMonthsToMonthStr(monthStr, n){
+  const [y, m] = monthStr.split("-").map(Number);
+  const idx = (y * 12 + (m - 1)) + n;
+  const newY = Math.floor(idx / 12);
+  const newM = (idx % 12) + 1;
+  return `${newY}-${String(newM).padStart(2, "0")}`;
+}
+
+/* Builds the rolling month list for the rent schedule: always at
+   least 12 months, and automatically extends further out as the
+   current date approaches the end of the existing list, so the
+   schedule never "runs out" of months to show. */
+function getRentMonthList(startMonth){
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const diff = monthDiff(startMonth, currentMonth);
+  const total = Math.max(12, diff + 7);
+  const list = [];
+  for (let i = 0; i < total; i++){
+    list.push(addMonthsToMonthStr(startMonth, i));
+  }
+  return list;
 }
 
 /* ---------- Formatting ---------- */
