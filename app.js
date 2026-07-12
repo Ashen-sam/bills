@@ -5,6 +5,12 @@
 
 // Your JSONBin master key
 const JSONBIN_MASTER_KEY = "$2a$10$xe4SYiix9sgX8LBMjFHEP.MseLoNsaQUJ56NM2oA8bmhJEkPawxZi";
+
+// Fixed bin id — every device/browser reads and writes to this SAME bin,
+// so your data stays in one place instead of a new bin being created
+// every time you open the app on a different device.
+const JSONBIN_BIN_ID = "6a532434f5f4af5e29831063";
+
 const JSONBIN_API = "https://api.jsonbin.io/v3/b";
 
 // The shape of a brand new bin
@@ -12,35 +18,9 @@ function emptyStore(){
   return { electricity: [], water: [], telephone: [] };
 }
 
-/* ---------- Bin bootstrap ---------- */
-// A single JSONBin "bin" holds all three categories.
-// The bin id is created once and remembered in localStorage.
-async function getBinId(){
-  let binId = localStorage.getItem("hbt_bin_id");
-  if (binId) return binId;
-
-  const res = await fetch(JSONBIN_API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Master-Key": JSONBIN_MASTER_KEY,
-      "X-Bin-Name": "home-bills-tracker",
-      "X-Bin-Private": "true"
-    },
-    body: JSON.stringify(emptyStore())
-  });
-
-  if (!res.ok) throw new Error("Could not create storage bin (" + res.status + ")");
-  const json = await res.json();
-  binId = json.metadata.id;
-  localStorage.setItem("hbt_bin_id", binId);
-  return binId;
-}
-
 /* ---------- Read / write ---------- */
 async function loadStore(){
-  const binId = await getBinId();
-  const res = await fetch(`${JSONBIN_API}/${binId}/latest`, {
+  const res = await fetch(`${JSONBIN_API}/${JSONBIN_BIN_ID}/latest`, {
     headers: { "X-Master-Key": JSONBIN_MASTER_KEY }
   });
   if (!res.ok) throw new Error("Could not load your bills (" + res.status + ")");
@@ -54,8 +34,7 @@ async function loadStore(){
 }
 
 async function saveStore(store){
-  const binId = await getBinId();
-  const res = await fetch(`${JSONBIN_API}/${binId}`, {
+  const res = await fetch(`${JSONBIN_API}/${JSONBIN_BIN_ID}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
