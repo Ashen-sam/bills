@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>Full History — Home Bills Tracker</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ---- History page-specific styles ---- */
+  .filter-row{
+    display:flex;
+    gap:8px;
+    margin-bottom: 16px;
+    overflow-x:auto;
+    padding-bottom: 2px;
+  }
+  .filter-btn{
+    flex: 0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background: var(--white);
+    border: 1.4px solid var(--border);
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+    font-weight:600;
+    padding: 9px 14px;
+    border-radius: 999px;
+    cursor:pointer;
+    white-space:nowrap;
+    font-family: inherit;
+    transition: all .12s ease;
+  }
+  .filter-btn svg{ width:14px; height:14px; }
+  .filter-btn.active{
+    background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+    border-color: transparent;
+    color: #fff;
+  }
+
+  .history-item .h-icon.electricity{ background:var(--green-lighter); color:#0f7a37; }
+  .history-item .h-icon.water{ background:#ecfeff; color:#0d9488; }
+  .history-item .h-icon.telephone{ background:#f0fdf4; color:#16a34a; }
+
+  .cat-tag{
+    display:inline-block;
+    font-size: 0.6rem;
+    font-weight:700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 6px;
+    text-transform:uppercase;
+    letter-spacing:0.02em;
+    vertical-align:middle;
+  }
+  .cat-tag.electricity{ background:var(--green-light); color:#0f7a37; }
+  .cat-tag.water{ background:#ccfbf1; color:#0d9488; }
+  .cat-tag.telephone{ background:#dcfce7; color:#16a34a; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <a href="index.html" class="icon-pill">
+      <i data-lucide="arrow-left"></i>
+      Home
+    </a>
+    <span class="icon-pill" id="statusPill">Connecting…</span>
+  </div>
+
+  <div class="brand">
+    <div class="brand-logo" style="background:linear-gradient(135deg, #60a5fa, #1d4ed8);">
+      <i data-lucide="history"></i>
+    </div>
+    <h1>Full <span>History</span></h1>
+    <p>All paid bills — Electricity, Water &amp; Telephone / WiFi</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="stat-value" id="statMonth">Rs. 0</div>
+      <div class="stat-label">This Month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statYear">Rs. 0</div>
+      <div class="stat-label">This Year</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value" id="statTotal">Rs. 0</div>
+      <div class="stat-label">All Time</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <span class="dot">
+        <i data-lucide="history"></i>
+      </span>
+      <h2>Payment History</h2>
+    </div>
+    <p class="card-sub">Most recent payments first. Filter by category below.</p>
+
+    <div class="filter-row" id="filterRow">
+      <button class="filter-btn active" data-filter="all">
+        <i data-lucide="list"></i> All
+      </button>
+      <button class="filter-btn" data-filter="electricity">
+        <i data-lucide="zap"></i> Electricity
+      </button>
+      <button class="filter-btn" data-filter="water">
+        <i data-lucide="droplet"></i> Water
+      </button>
+      <button class="filter-btn" data-filter="telephone">
+        <i data-lucide="phone"></i> Telephone
+      </button>
+    </div>
+
+    <div id="historyList"></div>
+
+    <button class="btn btn-secondary" id="exportBtn" style="margin-top:14px;">
+      <i data-lucide="download"></i>
+      Export as PDF
+    </button>
+  </div>
+
+  <p class="sync-note" id="syncNote">Syncing with JSONBin…</p>
+  <p class="footer-note">All amounts shown in Sri Lankan Rupees (LKR).</p>
+
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="app.js"></script>
+<script>
+const CAT_LABELS = { electricity: "Electricity", water: "Water", telephone: "Telephone / WiFi" };
+const CAT_ICONS  = { electricity: "zap", water: "droplet", telephone: "phone" };
+
+let allBills = [];
+let currentFilter = "all";
+
+const historyList = document.getElementById("historyList");
+const statusPill = document.getElementById("statusPill");
+const syncNote = document.getElementById("syncNote");
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function getFiltered(){
+  if (currentFilter === "all") return allBills;
+  return allBills.filter(b => b.cat === currentFilter);
+}
+
+function renderList(){
+  const list = sortByDatePaidDesc(getFiltered());
+
+  if (list.length === 0){
+    historyList.innerHTML = `
+      <div class="empty-state">
+        ${iconTag("inbox")}
+        <div>No paid bills found for this filter.</div>
+      </div>`;
+    renderIcons();
+    return;
+  }
+
+  historyList.innerHTML = list.map(b => `
+    <div class="history-item" data-id="${b.id}" data-cat="${b.cat}">
+      <span class="h-icon ${b.cat}">${iconTag(CAT_ICONS[b.cat])}</span>
+      <span class="h-main">
+        <strong>${formatMonthYear(b.monthYear)} <span class="cat-tag ${b.cat}">${CAT_LABELS[b.cat]}</span></strong>
+        <span>Paid on ${formatDate(b.datePaid)}${b.notes ? " · " + escapeHtml(b.notes) : ""}</span>
+      </span>
+      <span class="h-amount">
+        <span class="amt">${formatLKR(b.amountPaid)}</span>
+      </span>
+      <button class="h-del" title="Delete" data-id="${b.id}" data-cat="${b.cat}">${iconTag("trash-2")}</button>
+    </div>
+  `).join("");
+
+  renderIcons();
+
+  historyList.querySelectorAll(".h-del").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this paid bill record?")) return;
+      btn.disabled = true;
+      try{
+        await deleteBill(btn.dataset.cat, btn.dataset.id);
+        await loadAll();
+      }catch(e){
+        alert("Could not delete: " + e.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+function updateStats(){
+  const list = getFiltered();
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  const thisYear = now.getFullYear().toString();
+  let monthTotal = 0, yearTotal = 0, allTotal = 0;
+  list.forEach(b => {
+    const amt = Number(b.amountPaid) || 0;
+    allTotal += amt;
+    if ((b.datePaid || "").startsWith(thisMonth)) monthTotal += amt;
+    if ((b.datePaid || "").startsWith(thisYear)) yearTotal += amt;
+  });
+  document.getElementById("statMonth").textContent = formatLKR(monthTotal);
+  document.getElementById("statYear").textContent = formatLKR(yearTotal);
+  document.getElementById("statTotal").textContent = formatLKR(allTotal);
+}
+
+function wireFilters(){
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter;
+      renderList();
+      updateStats();
+    });
+  });
+}
+
+async function loadAll(){
+  const store = await loadStore();
+  allBills = [
+    ...store.electricity.map(b => ({...b, cat:"electricity"})),
+    ...store.water.map(b => ({...b, cat:"water"})),
+    ...store.telephone.map(b => ({...b, cat:"telephone"})),
+  ];
+  renderList();
+  updateStats();
+}
+
+async function init(){
+  renderIcons();
+  wireFilters();
+  try{
+    await loadAll();
+    statusPill.textContent = "Online";
+    syncNote.textContent = "Synced with JSONBin";
+  }catch(e){
+    statusPill.textContent = "Offline";
+    syncNote.textContent = "Could not sync — check your connection";
+    syncNote.classList.add("error");
+    console.error(e);
+  }
+}
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  const list = sortByDatePaidDesc(getFiltered());
+  if (list.length === 0){
+    alert("No paid bills to export yet.");
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(15);
+  doc.setTextColor(29, 78, 216);
+  const title = currentFilter === "all" ? "Full Payment History" : (CAT_LABELS[currentFilter] + " — Payment History");
+  doc.text(title, 14, 16);
+  doc.setFontSize(9);
+  doc.setTextColor(120,120,120);
+  doc.text("Generated " + new Date().toLocaleString("en-GB"), 14, 22);
+
+  const rows = list.map(b => [
+    formatMonthYear(b.monthYear),
+    CAT_LABELS[b.cat],
+    formatLKR(b.amountPaid),
+    formatDate(b.datePaid),
+    b.notes || "-"
+  ]);
+  const total = list.reduce((s,b) => s + (Number(b.amountPaid)||0), 0);
+
+  doc.autoTable({
+    startY: 28,
+    head: [["Billing Month", "Category", "Amount Paid", "Date Paid", "Notes"]],
+    body: rows,
+    foot: [["Total", "", formatLKR(total), "", ""]],
+    headStyles: { fillColor: [29,78,216] },
+    footStyles: { fillColor: [219,234,254], textColor: [29,78,216], fontStyle: "bold" },
+    styles: { fontSize: 9 }
+  });
+
+  doc.save("full-history.pdf");
+});
+
+init();
+</script>
+</body>
+</html>

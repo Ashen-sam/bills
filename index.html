@@ -5,6 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <title>Home Bills Tracker</title>
 <link rel="stylesheet" href="style.css">
+<style>
+  /* ---- Index page-specific styles: 2x2 category grid ---- */
+  .menu-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .menu-tile{
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px 10px 16px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 10px;
+    text-decoration:none;
+    color:inherit;
+    box-shadow: var(--shadow-sm);
+    transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  }
+  .menu-tile:hover{
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+    border-color: #bfeccd;
+  }
+  .menu-tile .t-icon{
+    width:48px; height:48px;
+    border-radius: 14px;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff;
+    flex:0 0 auto;
+  }
+  .menu-tile .t-icon svg{ width:22px; height:22px; }
+  .menu-tile strong{
+    font-size: 0.86rem;
+    text-align:center;
+    color: var(--ink);
+  }
+  .menu-tile span{
+    font-size: 0.66rem;
+    color: var(--ink-soft);
+    text-align:center;
+    line-height:1.35;
+  }
+
+  .history-btn{
+    background: linear-gradient(135deg, #60a5fa, #1d4ed8);
+  }
+</style>
 </head>
 <body>
 <div class="page">
@@ -50,52 +101,47 @@
     </div>
   </div>
 
-  <a href="electricity.html" class="menu-btn">
-    <span class="m-icon bg-electricity">
-      <i data-lucide="zap"></i>
-    </span>
-    <span class="m-text">
+  <div class="menu-grid">
+    <a href="electricity.html" class="menu-tile">
+      <span class="t-icon bg-electricity">
+        <i data-lucide="zap"></i>
+      </span>
       <strong>Electricity</strong>
       <span>View history &amp; add a paid bill</span>
-    </span>
-    <span class="m-arrow">
-      <i data-lucide="chevron-right"></i>
-    </span>
-  </a>
+    </a>
 
-  <a href="water.html" class="menu-btn">
-    <span class="m-icon bg-water">
-      <i data-lucide="droplet"></i>
-    </span>
-    <span class="m-text">
+    <a href="water.html" class="menu-tile">
+      <span class="t-icon bg-water">
+        <i data-lucide="droplet"></i>
+      </span>
       <strong>Water</strong>
       <span>View history &amp; add a paid bill</span>
-    </span>
-    <span class="m-arrow">
-      <i data-lucide="chevron-right"></i>
-    </span>
-  </a>
+    </a>
 
-  <a href="telephone.html" class="menu-btn">
-    <span class="m-icon bg-telephone">
-      <i data-lucide="phone"></i>
-    </span>
-    <span class="m-text">
+    <a href="telephone.html" class="menu-tile">
+      <span class="t-icon bg-telephone">
+        <i data-lucide="phone"></i>
+      </span>
       <strong>Telephone / WiFi</strong>
       <span>View history &amp; add a paid bill</span>
-    </span>
-    <span class="m-arrow">
-      <i data-lucide="chevron-right"></i>
-    </span>
-  </a>
+    </a>
 
-  <a href="rent.html" class="menu-btn">
-    <span class="m-icon" style="background:linear-gradient(135deg,#f59e0b,#b45309);">
-      <i data-lucide="key"></i>
+    <a href="rent.html" class="menu-tile">
+      <span class="t-icon" style="background:linear-gradient(135deg,#f59e0b,#b45309);">
+        <i data-lucide="key"></i>
+      </span>
+      <strong>Annex Rent</strong>
+      <span>Yearly schedule &amp; payments</span>
+    </a>
+  </div>
+
+  <a href="history.html" class="menu-btn">
+    <span class="m-icon history-btn">
+      <i data-lucide="history"></i>
     </span>
     <span class="m-text">
-      <strong>Annex Rent</strong>
-      <span>Yearly schedule &amp; mark payments received</span>
+      <strong>Full History</strong>
+      <span>See every paid bill, filter by category</span>
     </span>
     <span class="m-arrow">
       <i data-lucide="chevron-right"></i>
